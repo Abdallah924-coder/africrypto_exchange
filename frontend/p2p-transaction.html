@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Transaction</title>
+<link rel="stylesheet" href="css/theme.css">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+  .layout{display:grid; grid-template-columns:1fr 340px; gap:20px;}
+  .steps{display:flex; flex-direction:column; gap:0; margin-bottom:20px;}
+  .step{display:flex; gap:12px; padding:10px 0;}
+  .step .dot{width:22px; height:22px; border-radius:50%; background:var(--carbon-2); border:1px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px;}
+  .step.done .dot{background:var(--success); border-color:var(--success); color:#0A0B0D;}
+  .step .label{font-size:14px;}
+  .step .label small{display:block; color:var(--slate); font-size:12px;}
+
+  .chat-box{display:flex; flex-direction:column; height:460px;}
+  .chat-messages{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:4px;}
+  .msg{max-width:80%; padding:10px 12px; border-radius:12px; font-size:13px; background:var(--carbon-2);}
+  .msg.mine{align-self:flex-end; background:linear-gradient(135deg, var(--ember), var(--ember-dim)); color:#0A0B0D;}
+  .chat-input{display:flex; gap:8px; margin-top:10px;}
+  .chat-input input{flex:1;}
+
+  .summary-row{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px solid var(--line-soft);}
+  .summary-row:last-child{border-bottom:none;}
+  .summary-row .v{font-family:'JetBrains Mono', monospace; font-weight:600;}
+
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="dashboard.html" class="brand">
+      <div class="mark">A</div>
+      <div class="name">AfriCrypto <span>Exchange</span></div>
+    </a>
+    <nav class="tabs">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="wallet.html">Portefeuille</a>
+      <a href="p2p.html" class="active">P2P</a>
+    </nav>
+    <div class="user-menu" data-user-menu>
+      <div class="avatar">U</div>
+      <button class="btn btn-ghost" onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+      <h1 style="font-size:20px;">Transaction</h1>
+      <span class="status pending" id="statusPill">—</span>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="steps" id="steps"></div>
+          <div id="actionArea"></div>
+        </div>
+
+        <div class="card chat-box">
+          <h2 style="font-size:14px; margin-bottom:12px;">Discussion avec l'autre partie</h2>
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Écrire un message…">
+            <button class="btn btn-primary" onclick="sendMessage()">Envoyer</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="align-self:start;">
+        <h2 style="font-size:14px; margin-bottom:12px;">Résumé</h2>
+        <div id="summary"></div>
+      </div>
+    </div>
+  </main>
+
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/app.js"></script>
+<script>
+  const txId = new URLSearchParams(window.location.search).get('id');
+  let currentUserId = null;
+  let currentTx = null;
+
+  const socket = io(window.API_BASE_URL?.replace('/api', '') || 'http://localhost:4000', {
+    auth: { token: localStorage.getItem('ac_token') }
+  });
+  socket.emit('chat:join', txId);
+  socket.on('chat:message', appendMessage);
+  socket.on('p2p:released', () => location.reload());
+
+  function appendMessage(m) {
+    const wrap = document.getElementById('chatMessages');
+    const mine = m.sender === currentUserId;
+    wrap.insertAdjacentHTML('beforeend', `<div class="msg ${mine ? 'mine' : ''}">${m.content}</div>`);
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('chatInput');
+    if (!input.value.trim()) return;
+    socket.emit('chat:message', { transactionId: txId, content: input.value.trim() });
+    input.value = '';
+  }
+
+  function renderSteps(tx) {
+    const order = ['en_attente_paiement', 'paiement_declare', 'liberee'];
+    const idx = order.indexOf(tx.status);
+    const labels = [
+      ['Escrow ouvert', 'Les USDT du vendeur sont bloqués'],
+      ['Paiement déclaré', "L'acheteur a envoyé le Mobile Money"],
+      ['Fonds libérés', 'USDT transférés à l\'acheteur']
+    ];
+    document.getElementById('steps').innerHTML = labels.map(([l, s], i) => `
+      <div class="step ${i <= idx ? 'done' : ''}">
+        <div class="dot">${i <= idx ? '✓' : i + 1}</div>
+        <div class="label">${l}<small>${s}</small></div>
+      </div>`).join('');
+  }
+
+  function renderActions(tx, isSeller, isBuyer) {
+    const area = document.getElementById('actionArea');
+    if (tx.status === 'en_attente_paiement' && isBuyer) {
+      area.innerHTML = `<button class="btn btn-primary btn-block" onclick="declarePaid()">J'ai payé</button>`;
+    } else if (tx.status === 'paiement_declare' && isSeller) {
+      area.innerHTML = `
+        <button class="btn btn-secondary btn-block" onclick="confirmRelease()">Confirmer la réception et libérer</button>
+        <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="openDispute()">Ouvrir un litige</button>`;
+    } else if (['en_attente_paiement', 'paiement_declare'].includes(tx.status)) {
+      area.innerHTML = `<button class="btn btn-ghost btn-block" onclick="openDispute()">Ouvrir un litige</button>`;
+    } else if (tx.status === 'liberee') {
+      area.innerHTML = `<div class="status success">USDT libérés avec succès</div>`;
+    } else if (tx.status === 'litige') {
+      area.innerHTML = `<div class="status danger">Litige en cours — un administrateur va trancher</div>`;
+    }
+  }
+
+  async function loadTransaction() {
+    const [user, wallet] = await Promise.all([api.me(), api.getWallet()]);
+    currentUserId = user.id;
+
+    // NOTE : un endpoint GET /p2p/transactions/:id dédié est à ajouter côté API
+    // pour récupérer la transaction complète ; ce squelette suppose qu'il existe.
+    const tx = currentTx = { status: 'en_attente_paiement', amountCrypto: 0, amountFiat: 0, pricePerUnit: 0, platformFee: 0, paymentMethod: '—', seller: null, buyer: user.id };
+
+    const statusMap = { en_attente_paiement: ['pending', 'En attente de paiement'], paiement_declare: ['pending', 'Paiement déclaré'], liberee: ['success', 'Terminée'], litige: ['danger', 'Litige'], remboursee: ['danger', 'Remboursée'] };
+    const [cls, label] = statusMap[tx.status] || ['pending', tx.status];
+    const pill = document.getElementById('statusPill');
+    pill.className = `status ${cls}`; pill.textContent = label;
+
+    renderSteps(tx);
+    renderActions(tx, String(tx.seller) === currentUserId, String(tx.buyer) === currentUserId);
+
+    document.getElementById('summary').innerHTML = `
+      <div class="summary-row"><span class="muted">Montant</span><span class="v">${tx.amountCrypto} USDT</span></div>
+      <div class="summary-row"><span class="muted">Total à payer</span><span class="v">${tx.amountFiat.toLocaleString('fr-FR')} XAF</span></div>
+      <div class="summary-row"><span class="muted">Prix unitaire</span><span class="v">${tx.pricePerUnit} XAF</span></div>
+      <div class="summary-row"><span class="muted">Méthode</span><span class="v">${tx.paymentMethod}</span></div>`;
+
+    const messages = await api.getMessages(txId).catch(() => []);
+    messages.forEach(appendMessage);
+  }
+
+  async function declarePaid() { await api.declarePaid(txId); loadTransaction(); }
+  async function confirmRelease() { await api.confirmRelease(txId); loadTransaction(); }
+  async function openDispute() {
+    const reason = prompt('Décrivez le problème :');
+    if (!reason) return;
+    await api.openDispute(txId, { reason });
+    loadTransaction();
+  }
+
+  loadTransaction();
+</script>
+</body>
+</html>

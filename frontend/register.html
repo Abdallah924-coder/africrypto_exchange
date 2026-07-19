@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Créer un compte</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .auth-card{width:100%; max-width:420px;}
+  .auth-card .brand{justify-content:center; margin-bottom:28px;}
+  .auth-card h1{font-size:22px; text-align:center; margin-bottom:6px;}
+  .auth-card p.sub{text-align:center; color:var(--slate); font-size:14px; margin-bottom:28px;}
+  .error{color:var(--danger); font-size:13px; margin-bottom:14px; display:none;}
+  .switch-link{text-align:center; margin-top:20px; font-size:14px; color:var(--slate);}
+  .switch-link a{color:var(--python); font-weight:600; text-decoration:none;}
+</style>
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card card">
+      <a href="index.html" class="brand">
+        <div class="mark">A</div>
+        <div class="name">AfriCrypto <span>Exchange</span></div>
+      </a>
+      <h1>Créer votre compte</h1>
+      <p class="sub">L'Afrique trade, AfriCrypto protège.</p>
+
+      <div class="error" id="errorBox"></div>
+
+      <form id="registerForm">
+        <div class="field">
+          <label for="fullName">Nom complet</label>
+          <input type="text" id="fullName" required placeholder="Jean Mbarga">
+        </div>
+        <div class="field">
+          <label for="phone">Téléphone</label>
+          <input type="tel" id="phone" required placeholder="+237 6 XX XX XX XX">
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required placeholder="vous@exemple.com">
+        </div>
+        <div class="field">
+          <label for="password">Mot de passe</label>
+          <input type="password" id="password" required minlength="8" placeholder="8 caractères minimum">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Créer mon compte</button>
+      </form>
+
+      <div class="switch-link">Déjà un compte ? <a href="index.html">Se connecter</a></div>
+    </div>
+  </div>
+
+<script src="js/api.js"></script>
+<script>
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById('errorBox');
+    errorBox.style.display = 'none';
+    try {
+      const res = await api.register({
+        fullName: document.getElementById('fullName').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      });
+      localStorage.setItem('ac_token', res.token);
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.style.display = 'block';
+    }
+  });
+</script>
+</body>
+</html>

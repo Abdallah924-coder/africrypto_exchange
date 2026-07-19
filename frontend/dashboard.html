@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Tableau de bord</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:28px;}
+  .stat-card .label{font-size:13px; color:var(--slate); margin-bottom:8px;}
+  .stat-card .value{font-family:'JetBrains Mono', monospace; font-size:26px; font-weight:700;}
+  .stat-card .value.accent{color:var(--python);}
+  .actions{display:flex; gap:12px; margin-bottom:32px;}
+  table{width:100%; border-collapse:collapse;}
+  th{text-align:left; font-size:12px; color:var(--slate); font-weight:600; padding:10px 12px; border-bottom:1px solid var(--line);}
+  td{padding:14px 12px; border-bottom:1px solid var(--line-soft); font-size:14px;}
+  tr:last-child td{border-bottom:none;}
+  .empty{text-align:center; color:var(--slate); padding:40px 0; font-size:14px;}
+  @media (max-width:680px){ .grid{grid-template-columns:1fr;} .actions{flex-direction:column;} }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="dashboard.html" class="brand">
+      <div class="mark">A</div>
+      <div class="name">AfriCrypto <span>Exchange</span></div>
+    </a>
+    <nav class="tabs">
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="wallet.html">Portefeuille</a>
+      <a href="p2p.html">P2P</a>
+    </nav>
+    <div class="user-menu" data-user-menu>
+      <div class="avatar">U</div>
+      <button class="btn btn-ghost" onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <h1 style="font-size:24px; margin-bottom:24px;">Vue d'ensemble</h1>
+
+    <div class="grid">
+      <div class="card stat-card">
+        <div class="label">Solde disponible (USDT)</div>
+        <div class="value" id="statAvailable">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="label">Bloqué en escrow (USDT)</div>
+        <div class="value accent" id="statLocked">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="label">Réputation</div>
+        <div class="value" id="statReputation">—</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a href="wallet.html" class="btn btn-primary">Déposer / Retirer</a>
+      <a href="p2p.html" class="btn btn-secondary">Acheter / Vendre du USDT</a>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:16px; margin-bottom:16px;">Transactions récentes</h2>
+      <div id="txTableWrap" class="empty">Chargement…</div>
+    </div>
+  </main>
+
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/app.js"></script>
+<script>
+  async function loadDashboard() {
+    try {
+      const [wallet, user] = await Promise.all([api.getWallet(), api.me()]);
+      document.getElementById('statAvailable').textContent = wallet.available.toFixed(2);
+      document.getElementById('statLocked').textContent = wallet.locked.toFixed(2);
+      document.getElementById('statReputation').textContent = `${user.reputation.positiveRate}%`;
+    } catch (err) {
+      console.error(err);
+    }
+    // Le détail des transactions P2P se consulte depuis p2p.html — ici on garde un aperçu vide
+    // tant que l'endpoint /p2p/transactions/mine n'est pas branché.
+    document.getElementById('txTableWrap').innerHTML =
+      '<div class="empty">Vos transactions apparaîtront ici.</div>';
+  }
+  loadDashboard();
+</script>
+</body>
+</html>

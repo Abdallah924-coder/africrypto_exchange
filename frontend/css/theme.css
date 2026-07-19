@@ -1,0 +1,125 @@
+/* ==========================================================================
+   AfriCrypto — Design tokens
+   Thème sombre & luxueux, accents orange (achat) / jaune python (vente)
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root{
+  --void:      #0A0B0D;
+  --carbon:    #131519;
+  --carbon-2:  #1A1D22;
+  --line:      rgba(255,255,255,0.08);
+  --line-soft: rgba(255,255,255,0.05);
+  --ember:     #FF6A1A;
+  --ember-dim: #E85D0F;
+  --python:    #FFD43B;
+  --python-dim:#E8C230;
+  --bone:      #F2F1EC;
+  --slate:     #8A8D96;
+  --slate-dim: #55585F;
+  --success:   #3ECF8E;
+  --danger:    #FF5C5C;
+  --radius:    14px;
+  --radius-sm: 10px;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  background:var(--void);
+  color:var(--bone);
+  font-family:'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(255,106,26,0.10), transparent 60%),
+    radial-gradient(ellipse 700px 400px at 100% 0%, rgba(255,212,59,0.06), transparent 55%);
+  background-attachment:fixed;
+}
+.mono{font-family:'JetBrains Mono', monospace;}
+a{color:inherit;}
+
+h1,h2,h3{letter-spacing:-0.02em; font-weight:700;}
+
+/* ---------- buttons ---------- */
+.btn{
+  appearance:none; border:none; cursor:pointer; border-radius:var(--radius-sm);
+  font-weight:700; font-size:14px; padding:12px 22px;
+  transition:filter .15s ease, transform .15s ease;
+}
+.btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.btn-primary{background:linear-gradient(135deg, var(--ember), var(--ember-dim)); color:#0A0B0D;}
+.btn-secondary{background:linear-gradient(135deg, var(--python), var(--python-dim)); color:#0A0B0D;}
+.btn-ghost{background:var(--carbon); border:1px solid var(--line); color:var(--bone);}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.5; cursor:not-allowed; transform:none;}
+
+/* ---------- inputs ---------- */
+.field{margin-bottom:16px;}
+.field label{display:block; font-size:13px; color:var(--slate); margin-bottom:6px; font-weight:500;}
+.field input, .field select, .field textarea{
+  width:100%; background:var(--carbon); border:1px solid var(--line); color:var(--bone);
+  padding:12px 14px; border-radius:var(--radius-sm); font-size:14px; font-family:inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus{
+  outline:none; border-color:var(--ember);
+}
+
+/* ---------- cards / surfaces ---------- */
+.card{
+  background:var(--carbon); border:1px solid var(--line); border-radius:var(--radius);
+  padding:24px;
+}
+
+/* ---------- layout shell ---------- */
+.shell{display:flex; min-height:100vh;}
+.content{flex:1; max-width:1040px; margin:0 auto; width:100%; padding:32px 20px 80px;}
+
+/* ---------- top header ---------- */
+header.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 28px; border-bottom:1px solid var(--line-soft);
+}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none;}
+.brand .mark{
+  width:30px; height:30px; border-radius:8px;
+  background:linear-gradient(135deg, var(--ember), var(--python));
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:14px; color:#0A0B0D;
+}
+.brand .name{font-weight:700; font-size:16px;}
+.brand .name span{color:var(--slate); font-weight:500;}
+
+nav.tabs{display:flex; gap:28px;}
+nav.tabs a{color:var(--slate); text-decoration:none; font-size:14px; font-weight:500; padding-bottom:4px; border-bottom:2px solid transparent;}
+nav.tabs a.active{color:var(--bone); border-color:var(--ember);}
+
+.user-menu{display:flex; align-items:center; gap:12px;}
+.user-menu .avatar{
+  width:34px; height:34px; border-radius:50%; background:var(--carbon-2);
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:13px;
+}
+
+/* ---------- badges / chips ---------- */
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--carbon-2); border:1px solid var(--line); color:var(--slate);
+  font-size:12px; padding:5px 10px; border-radius:8px;
+}
+.badge-verified{display:inline-flex; align-items:center; gap:4px; font-size:10px; color:var(--python);}
+
+/* ---------- status pills ---------- */
+.status{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:5px 12px; border-radius:20px;}
+.status.pending{background:rgba(255,212,59,0.12); color:var(--python);}
+.status.success{background:rgba(62,207,142,0.12); color:var(--success);}
+.status.danger{background:rgba(255,92,92,0.12); color:var(--danger);}
+
+/* ---------- misc ---------- */
+.muted{color:var(--slate);}
+.divider{height:1px; background:var(--line-soft); margin:20px 0;}
+
+@media (max-width:680px){
+  header.topbar{padding:14px 16px;}
+  nav.tabs{display:none;}
+  .content{padding:20px 16px 60px;}
+}

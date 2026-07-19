@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Admin</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  .dispute-card{display:grid; grid-template-columns:1fr auto; gap:16px; align-items:start; padding:18px; border-bottom:1px solid var(--line-soft);}
+  .dispute-card:last-child{border-bottom:none;}
+  .dispute-card .reason{font-size:14px; margin-top:6px;}
+  .dispute-actions{display:flex; gap:8px;}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="dashboard.html" class="brand">
+      <div class="mark">A</div>
+      <div class="name">AfriCrypto <span>Exchange</span></div>
+    </a>
+    <nav class="tabs">
+      <a href="admin.html" class="active">Litiges</a>
+    </nav>
+    <div class="user-menu" data-user-menu>
+      <div class="avatar">A</div>
+      <button class="btn btn-ghost" onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <h1 style="font-size:22px; margin-bottom:20px;">Litiges ouverts</h1>
+    <div class="card" id="disputesWrap" style="padding:0;">
+      <div class="muted" style="padding:24px;">Chargement…</div>
+    </div>
+  </main>
+
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+
+<script src="js/app.js"></script>
+<script>
+  async function loadDisputes() {
+    const wrap = document.getElementById('disputesWrap');
+    try {
+      const disputes = await api.adminDisputes();
+      wrap.innerHTML = disputes.length ? disputes.map(d => `
+        <div class="dispute-card">
+          <div>
+            <div style="font-weight:600; font-size:14px;">Transaction ${d.transaction._id}</div>
+            <div class="reason muted">${d.reason}</div>
+            <div class="muted" style="font-size:12px; margin-top:6px;">Ouvert par ${d.openedBy.fullName} (${d.openedBy.email})</div>
+          </div>
+          <div class="dispute-actions">
+            <button class="btn btn-secondary" onclick="resolve('${d._id}', 'en_faveur_acheteur')">Faveur acheteur</button>
+            <button class="btn btn-ghost" onclick="resolve('${d._id}', 'en_faveur_vendeur')">Faveur vendeur</button>
+          </div>
+        </div>`).join('') : '<div class="muted" style="padding:24px;">Aucun litige en attente.</div>';
+    } catch (err) {
+      wrap.innerHTML = `<div class="muted" style="padding:24px;">${err.message}</div>`;
+    }
+  }
+  async function resolve(id, resolution) {
+    await api.adminResolve(id, resolution);
+    loadDisputes();
+  }
+  loadDisputes();
+</script>
+</body>
+</html>

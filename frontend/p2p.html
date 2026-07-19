@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — P2P</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  .panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:16px; flex-wrap:wrap;}
+  .switch{display:inline-flex; background:var(--carbon); border:1px solid var(--line); border-radius:12px; padding:4px; position:relative;}
+  .switch button{appearance:none; border:none; background:transparent; cursor:pointer; padding:9px 24px; font-size:14px; font-weight:600; color:var(--slate); border-radius:9px; position:relative; z-index:1; transition:color .2s ease;}
+  .switch button.active{color:#0A0B0D;}
+  .switch .thumb{position:absolute; top:4px; left:4px; height:calc(100% - 8px); width:112px; border-radius:9px; background:linear-gradient(135deg, var(--ember), var(--ember-dim)); transition:transform .25s cubic-bezier(.4,0,.2,1), background .25s ease;}
+  .switch[data-mode="vendre"] .thumb{transform:translateX(112px); background:linear-gradient(135deg, var(--python), var(--python-dim));}
+
+  .escrow-strip{display:flex; align-items:center; gap:10px; padding:14px 18px; margin-bottom:24px; border-radius:12px; background:linear-gradient(90deg, rgba(255,106,26,0.10), rgba(255,212,59,0.06)); border:1px solid rgba(255,212,59,0.18); font-size:13px; color:var(--slate);}
+  .escrow-strip b{color:var(--bone);}
+
+  .listing{background:var(--carbon); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:12px; display:grid; grid-template-columns:1.4fr 1fr 1fr auto; align-items:center; gap:16px; transition:border-color .18s ease, transform .18s ease;}
+  .listing:hover{border-color:rgba(255,255,255,0.16); transform:translateY(-1px);}
+  .trader{display:flex; align-items:center; gap:12px;}
+  .trader .avatar{width:38px; height:38px; border-radius:50%; background:var(--carbon-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;}
+  .trader .stats{font-size:12px; color:var(--slate); margin-top:3px;}
+  .price .amount{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:20px;}
+  .price .amount .cur{font-size:12px; color:var(--slate); font-weight:500; margin-left:2px;}
+  .price .sub{font-size:12px; color:var(--slate); margin-top:4px;}
+  .meta .methods{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  .meta .methods span{font-size:11px; padding:4px 8px; border-radius:6px; background:var(--carbon-2); border:1px solid var(--line); color:var(--slate);}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; padding:20px; z-index:50;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--carbon); border:1px solid var(--line); border-radius:var(--radius); padding:24px; width:100%; max-width:420px;}
+
+  @media (max-width:680px){
+    .listing{grid-template-columns:1fr; gap:14px;}
+    .meta .methods{justify-content:flex-start;}
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="dashboard.html" class="brand">
+      <div class="mark">A</div>
+      <div class="name">AfriCrypto <span>Exchange</span></div>
+    </a>
+    <nav class="tabs">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="wallet.html">Portefeuille</a>
+      <a href="p2p.html" class="active">P2P</a>
+    </nav>
+    <div class="user-menu" data-user-menu>
+      <div class="avatar">U</div>
+      <button class="btn btn-ghost" onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="panel-head">
+      <div class="switch" id="modeSwitch" data-mode="acheter">
+        <div class="thumb"></div>
+        <button class="active" data-mode="acheter">Acheter</button>
+        <button data-mode="vendre">Vendre</button>
+      </div>
+      <button class="btn btn-secondary" id="newListingBtn">Publier une annonce</button>
+    </div>
+
+    <div class="escrow-strip">🔒&nbsp;&nbsp;<span><b>Escrow automatique.</b> Les USDT du vendeur sont bloqués dès l'ouverture de la transaction — libérés uniquement à la confirmation du paiement.</span></div>
+
+    <div id="listings"><div class="muted">Chargement des annonces…</div></div>
+  </main>
+
+  <div class="modal-overlay" id="listingModal">
+    <div class="modal">
+      <h2 style="font-size:16px; margin-bottom:16px;">Nouvelle annonce de vente</h2>
+      <form id="listingForm">
+        <div class="field"><label>Prix par USDT (XAF)</label><input type="number" id="pricePerUnit" required></div>
+        <div class="field"><label>Quantité disponible (USDT)</label><input type="number" id="availableAmount" required></div>
+        <div class="field"><label>Limite min (XAF)</label><input type="number" id="minLimit" required></div>
+        <div class="field"><label>Limite max (XAF)</label><input type="number" id="maxLimit" required></div>
+        <div class="field">
+          <label>Méthode de paiement</label>
+          <select id="paymentMethod">
+            <option>Orange Money</option>
+            <option>MTN Mobile Money</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:6px;">
+          <button type="button" class="btn btn-ghost" style="flex:1;" onclick="closeModal()">Annuler</button>
+          <button type="submit" class="btn btn-secondary" style="flex:1;">Publier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/app.js"></script>
+<script>
+  const sw = document.getElementById('modeSwitch');
+  sw.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+    sw.dataset.mode = btn.dataset.mode;
+    sw.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    loadListings();
+  }));
+
+  function renderListing(l) {
+    const initial = l.seller?.fullName?.[0]?.toUpperCase() || '?';
+    return `
+      <div class="listing">
+        <div class="trader">
+          <div class="avatar">${initial}</div>
+          <div>
+            <div style="font-weight:600; font-size:14px;">${l.seller?.fullName || 'Utilisateur'}</div>
+            <div class="stats"><b>${l.seller?.reputation?.ordersCompleted ?? 0}</b> ordres · ${l.seller?.reputation?.positiveRate ?? 100}% avis positifs</div>
+          </div>
+        </div>
+        <div class="price">
+          <div class="amount">${l.pricePerUnit.toFixed(2)}<span class="cur">XAF</span></div>
+          <div class="sub">Limite <b>${l.minLimit.toLocaleString('fr-FR')} – ${l.maxLimit.toLocaleString('fr-FR')}</b> XAF</div>
+        </div>
+        <div class="meta">
+          <div class="methods">${l.paymentMethods.map(m => `<span>${m}</span>`).join('')}</div>
+          <div class="sub" style="text-align:right; margin-top:6px;">${l.availableAmount.toFixed(2)} USDT dispo.</div>
+        </div>
+        <button class="btn btn-primary" onclick="buyListing('${l._id}', ${l.minLimit}/${l.pricePerUnit})">Acheter</button>
+      </div>`;
+  }
+
+  async function loadListings() {
+    const wrap = document.getElementById('listings');
+    wrap.innerHTML = '<div class="muted">Chargement des annonces…</div>';
+    try {
+      const listings = await api.getListings();
+      wrap.innerHTML = listings.length
+        ? listings.map(renderListing).join('')
+        : '<div class="muted">Aucune annonce disponible pour le moment.</div>';
+    } catch (err) {
+      wrap.innerHTML = `<div class="muted">${err.message}</div>`;
+    }
+  }
+
+  async function buyListing(listingId, minAmountCrypto) {
+    const amountCrypto = prompt('Quantité de USDT à acheter ?', minAmountCrypto.toFixed(2));
+    if (!amountCrypto) return;
+    try {
+      const tx = await api.buy({ listingId, amountCrypto: Number(amountCrypto), paymentMethod: 'Orange Money' });
+      window.location.href = `p2p-transaction.html?id=${tx._id}`;
+    } catch (err) { alert(err.message); }
+  }
+
+  document.getElementById('newListingBtn').addEventListener('click', () => {
+    document.getElementById('listingModal').classList.add('open');
+  });
+  function closeModal() { document.getElementById('listingModal').classList.remove('open'); }
+
+  document.getElementById('listingForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api.createListing({
+        pricePerUnit: Number(document.getElementById('pricePerUnit').value),
+        availableAmount: Number(document.getElementById('availableAmount').value),
+        minLimit: Number(document.getElementById('minLimit').value),
+        maxLimit: Number(document.getElementById('maxLimit').value),
+        paymentMethods: [document.getElementById('paymentMethod').value]
+      });
+      closeModal();
+      loadListings();
+    } catch (err) { alert(err.message); }
+  });
+
+  loadListings();
+</script>
+</body>
+</html>
