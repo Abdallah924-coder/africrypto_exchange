@@ -123,3 +123,49 @@ nav.tabs a.active{color:var(--bone); border-color:var(--ember);}
   nav.tabs{display:none;}
   .content{padding:20px 16px 60px;}
 }
+
+/* ==========================================================================
+   Mise à jour — nav injectée + hamburger + couleurs restreintes aux cartes
+   ========================================================================== */
+
+/* La topbar reste neutre (noir/blanc/gris) : orange et jaune python ne
+   servent plus qu'à l'intérieur des cartes, boutons et badges. */
+nav.tabs a.active{color:var(--bone); border-color:var(--bone);}
+
+.hamburger{
+  display:flex; flex-direction:column; gap:4px; background:none; border:none; cursor:pointer; padding:6px;
+}
+.hamburger span{width:20px; height:2px; background:var(--bone); border-radius:2px;}
+
+.mobile-drawer{
+  position:fixed; inset:0; background:rgba(10,11,13,0.97); z-index:100;
+  display:none; flex-direction:column; padding:24px;
+}
+.mobile-drawer.open{display:flex;}
+.mobile-drawer .drawer-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:32px;}
+.mobile-drawer a{
+  color:var(--bone); text-decoration:none; font-size:18px; font-weight:600;
+  padding:16px 0; border-bottom:1px solid var(--line-soft);
+}
+.mobile-drawer a.active{color:var(--python);}
+.mobile-drawer .close-btn{background:none; border:none; color:var(--bone); font-size:22px; cursor:pointer;}
+
+/* Sur desktop large, on garde aussi les liens horizontaux visibles en plus du hamburger. */
+@media (max-width:820px){
+  nav.tabs{display:none;}
+}
+
+/* ---------- arrière-plan de marque (toutes les pages) ---------- */
+/* Contenu dans le viewport par construction (background-size), ne peut pas déborder,
+   pas besoin de positionnement manuel en pixels page par page. */
+body{
+  background-image:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(255,106,26,0.10), transparent 60%),
+    radial-gradient(ellipse 700px 400px at 100% 0%, rgba(255,212,59,0.06), transparent 55%),
+    linear-gradient(rgba(10,11,13,0.90), rgba(10,11,13,0.90)),
+    url('assets/bg-icosahedron.png');
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  background-position: 15% -10%, 100% 0%, center, right center;
+  background-size: auto, auto, cover, contain;
+  background-attachment: fixed, fixed, fixed, fixed;
+}

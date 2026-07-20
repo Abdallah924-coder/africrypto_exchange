@@ -1,0 +1,14 @@
+{
+  "name": "africrypto-local-chain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chaîne locale (Hardhat) pour tester tout le flux dépôt/escrow/retrait sans faucet ni argent réel.",
+  "scripts": {
+    "node": "hardhat node",
+    "deploy": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "hardhat": "^2.22.5",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0"
+  }
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Profil</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media (max-width:680px){ .two-col{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+  <div id="app-nav"></div>
+  <main class="content">
+    <h1 style="font-size:24px; margin-bottom:20px;">Profil</h1>
+    <div class="two-col">
+      <div class="card">
+        <h2 style="font-size:15px; margin-bottom:16px;">Informations</h2>
+        <div class="field"><label>Nom complet</label><div id="pFullName" class="mono">—</div></div>
+        <div class="field"><label>Email</label><div id="pEmail" class="mono">—</div></div>
+        <div class="field"><label>Téléphone</label><div id="pPhone" class="mono">—</div></div>
+        <div class="field"><label>Statut KYC</label><span class="status pending" id="pKyc">—</span></div>
+      </div>
+      <div class="card">
+        <h2 style="font-size:15px; margin-bottom:16px;">Sécurité</h2>
+        <div class="field"><label>Authentification à deux facteurs</label><div id="p2fa" class="mono">—</div></div>
+        <p class="muted" style="font-size:13px;">La gestion 2FA (activation/désactivation) sera branchée sur les endpoints <code>/auth/2fa/*</code> à venir côté API.</p>
+      </div>
+    </div>
+  </main>
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/app.js"></script>
+<script>
+  api.me().then(u => {
+    document.getElementById('pFullName').textContent = u.fullName;
+    document.getElementById('pEmail').textContent = u.email;
+    document.getElementById('pPhone').textContent = u.phone;
+    document.getElementById('pKyc').textContent = u.kyc.status;
+    document.getElementById('p2fa').textContent = u.twoFactorEnabled ? 'Activée' : 'Désactivée';
+  });
+</script>
+</body>
+</html>

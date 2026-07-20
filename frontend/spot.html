@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Spot</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  .layout{display:grid; grid-template-columns:2fr 1fr; gap:20px;}
+  .chart-placeholder{
+    height:360px; border-radius:var(--radius); background:var(--carbon-2);
+    display:flex; align-items:center; justify-content:center; color:var(--slate); font-size:13px;
+  }
+  @media (max-width:820px){ .layout{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+  <div id="app-nav"></div>
+  <main class="content">
+    <h1 style="font-size:24px; margin-bottom:20px;">Trading Spot</h1>
+    <div class="layout">
+      <div class="card">
+        <div class="chart-placeholder">Carnet d'ordres / graphique à venir</div>
+      </div>
+      <div class="card">
+        <h2 style="font-size:15px; margin-bottom:16px;">Acheter / Vendre</h2>
+        <p class="muted" style="font-size:13px;">Le moteur de matching spot n'est pas encore implémenté côté API — cette page est un squelette d'interface à brancher plus tard.</p>
+      </div>
+    </div>
+  </main>
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

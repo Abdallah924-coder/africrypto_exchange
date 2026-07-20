@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Vérification d'identité</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  .upload-box{
+    border:1.5px dashed var(--line); border-radius:var(--radius); padding:40px 20px;
+    text-align:center; color:var(--slate); font-size:14px; cursor:pointer;
+  }
+  .upload-box:hover{border-color:var(--python);}
+</style>
+</head>
+<body>
+  <div id="app-nav"></div>
+  <main class="content">
+    <h1 style="font-size:24px; margin-bottom:8px;">Vérification d'identité</h1>
+    <p class="muted" style="margin-bottom:24px;">Requise avant de pouvoir publier des annonces de vente ou dépasser les limites de base.</p>
+    <div class="card">
+      <div class="field"><label>Statut actuel</label><span class="status pending" id="kycStatus">—</span></div>
+      <div class="upload-box">
+        Glissez une photo de votre pièce d'identité ici, ou cliquez pour parcourir.<br>
+        <span class="muted" style="font-size:12px;">Endpoint d'upload à brancher — voir README.</span>
+      </div>
+    </div>
+  </main>
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/app.js"></script>
+<script>
+  api.me().then(u => { document.getElementById('kycStatus').textContent = u.kyc.status; });
+</script>
+</body>
+</html>

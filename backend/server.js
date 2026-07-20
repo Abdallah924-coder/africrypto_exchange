@@ -5,6 +5,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const registerChatSocket = require('./sockets/chat.socket');
+const { startDepositMonitor } = require('./services/depositMonitor');
+const { seedAdmin } = require('./config/adminSeed');
 
 const authRoutes = require('./routes/auth.routes');
 const walletRoutes = require('./routes/wallet.routes');
@@ -17,7 +19,7 @@ const io = new Server(server, {
   cors: { origin: process.env.FRONTEND_ORIGIN || '*' }
 });
 
-app.set('io', io); // accessible depuis les contrôleurs via req.app.get('io')
+app.set('io', io);
 
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN || '*' }));
 app.use(express.json());
@@ -36,7 +38,9 @@ app.use((err, req, res, next) => {
 
 registerChatSocket(io);
 
-connectDB().then(() => {
+connectDB().then(async () => {
+  await seedAdmin();
   const PORT = process.env.PORT || 4000;
   server.listen(PORT, () => console.log(`[server] AfriCrypto API sur le port ${PORT}`));
+  startDepositMonitor(io);
 });

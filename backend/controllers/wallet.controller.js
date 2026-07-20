@@ -1,18 +1,14 @@
 const Wallet = require('../models/Wallet');
-const User = require('../models/User');
-const { deriveDepositAddress } = require('../utils/hdWallet');
+const WalletMovement = require('../models/WalletMovement');
+const signerClient = require('../services/signerClient');
 
 async function getOrCreateWallet(userId, asset = 'USDT', network = 'BSC') {
   let wallet = await Wallet.findOne({ user: userId, asset });
   if (wallet) return wallet;
-
   const count = await Wallet.countDocuments();
-  const { address, derivationIndex } = deriveDepositAddress(count + 1);
-
-  wallet = await Wallet.create({
-    user: userId, asset, network,
-    depositAddress: address, derivationIndex
-  });
+  const derivationIndex = count + 1;
+  const { address } = await signerClient.derive(derivationIndex);
+  wallet = await Wallet.create({ user: userId, asset, network, depositAddress: address, derivationIndex });
   return wallet;
 }
 
@@ -23,25 +19,6 @@ async function getMyWallet(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// Appelé par le service de monitoring blockchain (webhook Moralis/QuickNode)
-// quand un dépôt est détecté sur une adresse suivie.
-// TODO: sécuriser avec une signature de webhook + vérification du nombre de confirmations.
-async function depositWebhook(req, res, next) {
-  try {
-    const { address, amount, txHash } = req.body;
-    const wallet = await Wallet.findOne({ depositAddress: address });
-    if (!wallet) return res.status(404).json({ message: 'Adresse inconnue' });
-
-    wallet.available += Number(amount);
-    await wallet.save();
-
-    const io = req.app.get('io');
-    io.to(`user:${wallet.user}`).emit('deposit:credited', { asset: wallet.asset, amount, txHash });
-
-    res.json({ received: true });
-  } catch (err) { next(err); }
-}
-
 async function withdraw(req, res, next) {
   try {
     const { toAddress, amount } = req.body;
@@ -49,23 +26,26 @@ async function withdraw(req, res, next) {
     const feePercent = Number(process.env.WITHDRAWAL_FEE_PERCENT || 1);
     const fee = Math.max(amount * (feePercent / 100), 1);
     const total = Number(amount) + fee;
-
-    if (wallet.available < total) {
-      return res.status(400).json({ message: 'Solde disponible insuffisant' });
-    }
-
+    if (wallet.available < total) return res.status(400).json({ message: 'Solde disponible insuffisant' });
     wallet.available -= total;
     await wallet.save();
-
-    // TODO: brancher l'envoi on-chain réel (ethers.js signé côté service de signature / KMS)
-    // puis mettre à jour le statut de la transaction (pending -> confirmé) via webhook.
-
-    res.json({
-      status: 'pending',
-      toAddress, amount, fee,
-      message: 'Retrait initié, en cours de confirmation sur la blockchain'
-    });
+    try {
+      const result = await signerClient.withdraw(toAddress, amount);
+      await WalletMovement.create({ user: req.user._id, type: 'retrait', amount, fee, toAddress, txHash: result.txHash, status: 'confirme' });
+      res.json({ status: result.status, txHash: result.txHash, toAddress, amount, fee });
+    } catch (signErr) {
+      wallet.available += total;
+      await wallet.save();
+      throw signErr;
+    }
   } catch (err) { next(err); }
 }
 
-module.exports = { getMyWallet, depositWebhook, withdraw, getOrCreateWallet };
+async function getMovements(req, res, next) {
+  try {
+    const movements = await WalletMovement.find({ user: req.user._id }).sort({ createdAt: -1 });
+    res.json(movements);
+  } catch (err) { next(err); }
+}
+
+module.exports = { getMyWallet, withdraw, getMovements, getOrCreateWallet };

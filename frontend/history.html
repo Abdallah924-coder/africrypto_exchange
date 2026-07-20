@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AfriCrypto — Historique</title>
+<link rel="stylesheet" href="css/theme.css">
+<style>
+  table{width:100%; border-collapse:collapse;}
+  th{text-align:left; font-size:12px; color:var(--slate); font-weight:600; padding:10px 12px; border-bottom:1px solid var(--line);}
+  td{padding:14px 12px; border-bottom:1px solid var(--line-soft); font-size:14px;}
+  tr:last-child td{border-bottom:none;}
+  .empty{text-align:center; color:var(--slate); padding:60px 0; font-size:14px;}
+  .tabs-local{display:flex; gap:8px; margin-bottom:20px;}
+  .tabs-local button{background:var(--carbon); border:1px solid var(--line); color:var(--slate); padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer;}
+  .tabs-local button.active{color:#0A0B0D; background:linear-gradient(135deg, var(--ember), var(--ember-dim)); border-color:transparent;}
+</style>
+</head>
+<body>
+  <div id="app-nav"></div>
+  <main class="content">
+    <h1 style="font-size:24px; margin-bottom:20px;">Historique</h1>
+    <div class="tabs-local">
+      <button class="active" data-type="p2p">Transactions P2P</button>
+      <button data-type="wallet">Dépôts / Retraits</button>
+    </div>
+    <div class="card" style="padding:0;">
+      <div class="empty" id="historyWrap">
+        Cette vue nécessite les endpoints <code>/p2p/transactions/mine</code> et
+        <code>/wallet/movements</code> côté API (pas encore branchés — voir README).
+      </div>
+    </div>
+  </main>
+<script src="js/api.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

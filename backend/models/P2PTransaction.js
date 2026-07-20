@@ -9,11 +9,13 @@ const p2pTransactionSchema = new mongoose.Schema({
   amountCrypto: { type: Number, required: true },
   amountFiat: { type: Number, required: true },
   pricePerUnit: { type: Number, required: true },
-  platformFee: { type: Number, required: true }, // prélevé sur le vendeur, en actif crypto
+  platformFee: { type: Number, required: true },
   paymentMethod: { type: String, required: true },
-  // machine à états de l'escrow :
-  // en_attente_paiement -> paiement_declare -> liberee (succès)
-  //                                          -> litige -> liberee | remboursee
+  paymentInstructions: {
+    accountName: { type: String, required: true },
+    accountNumber: { type: String, required: true }
+  },
+  proofScreenshotUrl: { type: String },
   status: {
     type: String,
     enum: ['en_attente_paiement', 'paiement_declare', 'liberee', 'litige', 'remboursee', 'annulee'],
@@ -22,7 +24,7 @@ const p2pTransactionSchema = new mongoose.Schema({
   paymentDeclaredAt: { type: Date },
   releasedAt: { type: Date },
   disputeReason: { type: String },
-  expiresAt: { type: Date, required: true } // délai pour payer (ex: 15 min)
+  expiresAt: { type: Date, required: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model('P2PTransaction', p2pTransactionSchema);

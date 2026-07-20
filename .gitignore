@@ -1,0 +1,6 @@
+backend/.env
+backend/node_modules/
+local-chain/.env
+signer-service/.env
+local-chain/node_modules/
+signer-service/node_modules/
