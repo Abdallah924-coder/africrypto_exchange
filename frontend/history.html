@@ -7,33 +7,114 @@
 <link rel="stylesheet" href="css/theme.css">
 <style>
   table{width:100%; border-collapse:collapse;}
-  th{text-align:left; font-size:12px; color:var(--slate); font-weight:600; padding:10px 12px; border-bottom:1px solid var(--line);}
-  td{padding:14px 12px; border-bottom:1px solid var(--line-soft); font-size:14px;}
+  th{text-align:left; font-size:12px; color:var(--slate); font-weight:600; padding:14px 16px; border-bottom:1px solid var(--line);}
+  td{padding:16px; border-bottom:1px solid var(--line-soft); font-size:14px;}
   tr:last-child td{border-bottom:none;}
-  .empty{text-align:center; color:var(--slate); padding:60px 0; font-size:14px;}
-  .tabs-local{display:flex; gap:8px; margin-bottom:20px;}
-  .tabs-local button{background:var(--carbon); border:1px solid var(--line); color:var(--slate); padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer;}
+  tr.clickable{cursor:pointer;}
+  tr.clickable:hover{background:var(--carbon-2);}
+  .empty-state{text-align:center; color:var(--slate); padding:70px 24px; font-size:14px; line-height:1.7;}
+  .tabs-local{display:flex; gap:10px; margin-bottom:24px;}
+  .tabs-local button{background:var(--carbon); border:1px solid var(--line); color:var(--slate); padding:10px 18px; border-radius:9px; font-size:13px; cursor:pointer; font-weight:500;}
   .tabs-local button.active{color:#0A0B0D; background:linear-gradient(135deg, var(--ember), var(--ember-dim)); border-color:transparent;}
+  .amount-in{color:var(--success);}
+  .amount-out{color:var(--danger);}
 </style>
 </head>
 <body>
   <div id="app-nav"></div>
   <main class="content">
-    <h1 style="font-size:24px; margin-bottom:20px;">Historique</h1>
+    <h1 style="font-size:24px; margin-bottom:24px;">Historique</h1>
     <div class="tabs-local">
       <button class="active" data-type="p2p">Transactions P2P</button>
       <button data-type="wallet">Dépôts / Retraits</button>
     </div>
     <div class="card" style="padding:0;">
-      <div class="empty" id="historyWrap">
-        Cette vue nécessite les endpoints <code>/p2p/transactions/mine</code> et
-        <code>/wallet/movements</code> côté API (pas encore branchés — voir README).
-      </div>
+      <div id="historyWrap"><div class="empty-state">Chargement…</div></div>
     </div>
   </main>
 <script src="js/api.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/app.js"></script>
+<script>
+  let currentUserId = null;
+  let activeTab = 'p2p';
+
+  document.querySelectorAll('.tabs-local button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tabs-local button').forEach(b => b.classList.toggle('active', b === btn));
+      activeTab = btn.dataset.type;
+      render();
+    });
+  });
+
+  function statusBadge(status) {
+    const map = {
+      en_attente_paiement: ['pending', 'En attente'], paiement_declare: ['pending', 'Déclaré'],
+      liberee: ['success', 'Terminée'], litige: ['danger', 'Litige'], remboursee: ['danger', 'Remboursée'],
+      confirme: ['success', 'Confirmé'], en_attente: ['pending', 'En attente'], echoue: ['danger', 'Échoué']
+    };
+    const [cls, label] = map[status] || ['pending', status];
+    return `<span class="status ${cls}">${label}</span>`;
+  }
+
+  async function renderP2P() {
+    const wrap = document.getElementById('historyWrap');
+    const transactions = await api.getMyTransactions();
+    if (!transactions.length) {
+      wrap.innerHTML = '<div class="empty-state">Aucune transaction P2P pour l\'instant.<br>Elles apparaîtront ici dès ton premier achat ou vente.</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>Date</th><th>Rôle</th><th>Montant</th><th>Total</th><th>Statut</th></tr></thead>
+        <tbody>
+          ${transactions.map(tx => {
+            const isSeller = String(tx.seller._id) === currentUserId;
+            return `<tr class="clickable" onclick="location.href='p2p-transaction.html?id=${tx._id}'">
+              <td class="muted">${new Date(tx.createdAt).toLocaleString('fr-FR')}</td>
+              <td>${isSeller ? 'Vente' : 'Achat'}</td>
+              <td class="mono">${tx.amountCrypto} USDT</td>
+              <td class="mono">${tx.amountFiat.toLocaleString('fr-FR')} XAF</td>
+              <td>${statusBadge(tx.status)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function renderWallet() {
+    const wrap = document.getElementById('historyWrap');
+    const movements = await api.getMovements();
+    if (!movements.length) {
+      wrap.innerHTML = '<div class="empty-state">Aucun dépôt ni retrait pour l\'instant.<br>Un dépôt apparaît ici automatiquement dès qu\'il est détecté sur ton adresse.</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>Date</th><th>Type</th><th>Montant</th><th>Frais</th><th>Statut</th></tr></thead>
+        <tbody>
+          ${movements.map(m => `<tr>
+            <td class="muted">${new Date(m.createdAt).toLocaleString('fr-FR')}</td>
+            <td>${m.type === 'depot' ? 'Dépôt' : 'Retrait'}</td>
+            <td class="mono ${m.type === 'depot' ? 'amount-in' : 'amount-out'}">${m.type === 'depot' ? '+' : '-'}${m.amount} USDT</td>
+            <td class="mono muted">${m.fee ? m.fee.toFixed(2) + ' USDT' : '—'}</td>
+            <td>${statusBadge(m.status)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  async function render() {
+    document.getElementById('historyWrap').innerHTML = '<div class="empty-state">Chargement…</div>';
+    try {
+      if (activeTab === 'p2p') await renderP2P(); else await renderWallet();
+    } catch (err) {
+      document.getElementById('historyWrap').innerHTML = `<div class="empty-state">${err.message}</div>`;
+    }
+  }
+
+  api.me().then(u => { currentUserId = u.id; render(); });
+</script>
 </body>
 </html>

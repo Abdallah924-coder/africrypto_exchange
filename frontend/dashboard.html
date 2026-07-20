@@ -62,13 +62,33 @@
       document.getElementById('statAvailable').textContent = wallet.available.toFixed(2);
       document.getElementById('statLocked').textContent = wallet.locked.toFixed(2);
       document.getElementById('statReputation').textContent = `${user.reputation.positiveRate}%`;
+
+      const transactions = await api.getMyTransactions();
+      const wrap = document.getElementById('txTableWrap');
+      if (!transactions.length) {
+        wrap.innerHTML = '<div class="empty">Aucune transaction pour l\'instant. Rends-toi sur P2P pour acheter ou vendre.</div>';
+        return;
+      }
+      const statusMap = { en_attente_paiement: ['pending', 'En attente'], paiement_declare: ['pending', 'Déclaré'], liberee: ['success', 'Terminée'], litige: ['danger', 'Litige'], remboursee: ['danger', 'Remboursée'] };
+      wrap.innerHTML = `
+        <table>
+          <thead><tr><th>Date</th><th>Rôle</th><th>Montant</th><th>Statut</th></tr></thead>
+          <tbody>
+            ${transactions.slice(0, 5).map(tx => {
+              const isSeller = String(tx.seller._id) === user.id;
+              const [cls, label] = statusMap[tx.status] || ['pending', tx.status];
+              return `<tr style="cursor:pointer;" onclick="location.href='p2p-transaction.html?id=${tx._id}'">
+                <td class="muted">${new Date(tx.createdAt).toLocaleDateString('fr-FR')}</td>
+                <td>${isSeller ? 'Vente' : 'Achat'}</td>
+                <td class="mono">${tx.amountCrypto} USDT</td>
+                <td><span class="status ${cls}">${label}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
     } catch (err) {
       console.error(err);
     }
-    // Le détail des transactions P2P se consulte depuis p2p.html — ici on garde un aperçu vide
-    // tant que l'endpoint /p2p/transactions/mine n'est pas branché.
-    document.getElementById('txTableWrap').innerHTML =
-      '<div class="empty">Vos transactions apparaîtront ici.</div>';
   }
   loadDashboard();
 </script>

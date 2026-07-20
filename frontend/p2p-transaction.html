@@ -7,24 +7,43 @@
 <link rel="stylesheet" href="css/theme.css">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <style>
-  .layout{display:grid; grid-template-columns:1fr 340px; gap:20px;}
-  .steps{display:flex; flex-direction:column; gap:0; margin-bottom:20px;}
-  .step{display:flex; gap:12px; padding:10px 0;}
-  .step .dot{width:22px; height:22px; border-radius:50%; background:var(--carbon-2); border:1px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px;}
+  .layout{display:grid; grid-template-columns:1fr 360px; gap:28px;}
+  .steps{display:flex; flex-direction:column; gap:2px; margin-bottom:24px;}
+  .step{display:flex; gap:14px; padding:12px 0;}
+  .step .dot{width:24px; height:24px; border-radius:50%; background:var(--carbon-2); border:1px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px;}
   .step.done .dot{background:var(--success); border-color:var(--success); color:#0A0B0D;}
-  .step .label{font-size:14px;}
-  .step .label small{display:block; color:var(--slate); font-size:12px;}
+  .step .label{font-size:14px; line-height:1.5;}
+  .step .label small{display:block; color:var(--slate); font-size:12px; margin-top:2px;}
 
-  .chat-box{display:flex; flex-direction:column; height:460px;}
-  .chat-messages{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:4px;}
-  .msg{max-width:80%; padding:10px 12px; border-radius:12px; font-size:13px; background:var(--carbon-2);}
+  .pay-instructions{
+    background:linear-gradient(135deg, rgba(255,106,26,0.08), rgba(255,212,59,0.05));
+    border:1px solid rgba(255,212,59,0.2); border-radius:var(--radius);
+    padding:26px 28px; margin-bottom:24px;
+  }
+  .pay-instructions h3{font-size:15px; margin-bottom:18px;}
+  .pay-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06);}
+  .pay-row:last-child{border-bottom:none;}
+  .pay-row .k{font-size:13px; color:var(--slate);}
+  .pay-row .v{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:15px;}
+
+  .proof-upload{border:1.5px dashed var(--line); border-radius:var(--radius-sm); padding:24px; text-align:center; margin:20px 0; cursor:pointer;}
+  .proof-upload:hover{border-color:var(--python);}
+  .proof-upload.has-file{border-color:var(--success); border-style:solid;}
+  .proof-preview{max-width:100%; max-height:220px; border-radius:8px; margin-top:14px;}
+
+  .chat-box{display:flex; flex-direction:column; height:440px; margin-top:24px;}
+  .chat-messages{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding-right:4px;}
+  .msg{max-width:80%; padding:11px 14px; border-radius:12px; font-size:13px; line-height:1.5; background:var(--carbon-2);}
   .msg.mine{align-self:flex-end; background:linear-gradient(135deg, var(--ember), var(--ember-dim)); color:#0A0B0D;}
-  .chat-input{display:flex; gap:8px; margin-top:10px;}
+  .chat-input{display:flex; gap:10px; margin-top:14px;}
   .chat-input input{flex:1;}
 
-  .summary-row{display:flex; justify-content:space-between; font-size:13px; padding:8px 0; border-bottom:1px solid var(--line-soft);}
+  .summary-row{display:flex; justify-content:space-between; font-size:13px; padding:10px 0; border-bottom:1px solid var(--line-soft);}
   .summary-row:last-child{border-bottom:none;}
   .summary-row .v{font-family:'JetBrains Mono', monospace; font-weight:600;}
+
+  .error-box{text-align:center; padding:80px 24px;}
+  .error-box p{color:var(--slate); margin:12px 0 24px; font-size:14px;}
 
   @media (max-width:820px){ .layout{grid-template-columns:1fr;} }
 </style>
@@ -32,34 +51,8 @@
 <body>
   <div id="app-nav"></div>
 
-  <main class="content">
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
-      <h1 style="font-size:20px;">Transaction</h1>
-      <span class="status pending" id="statusPill">—</span>
-    </div>
-
-    <div class="layout">
-      <div>
-        <div class="card" style="margin-bottom:16px;">
-          <div class="steps" id="steps"></div>
-          <div id="actionArea"></div>
-        </div>
-
-        <div class="card chat-box">
-          <h2 style="font-size:14px; margin-bottom:12px;">Discussion avec l'autre partie</h2>
-          <div class="chat-messages" id="chatMessages"></div>
-          <div class="chat-input">
-            <input type="text" id="chatInput" placeholder="Écrire un message…">
-            <button class="btn btn-primary" onclick="sendMessage()">Envoyer</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="align-self:start;">
-        <h2 style="font-size:14px; margin-bottom:12px;">Résumé</h2>
-        <div id="summary"></div>
-      </div>
-    </div>
+  <main class="content" id="pageContent">
+    <div class="empty-state" style="padding:100px 0; text-align:center; color:var(--slate);">Chargement de la transaction…</div>
   </main>
 
 <script src="js/api.js"></script>
@@ -70,16 +63,75 @@
   const txId = new URLSearchParams(window.location.search).get('id');
   let currentUserId = null;
   let currentTx = null;
+  let proofDataUrl = null;
+  let socket = null;
 
-  const socket = io(window.API_BASE_URL?.replace('/api', '') || 'http://localhost:4000', {
-    auth: { token: localStorage.getItem('ac_token') }
-  });
-  socket.emit('chat:join', txId);
-  socket.on('chat:message', appendMessage);
-  socket.on('p2p:released', () => location.reload());
+  const pageContent = document.getElementById('pageContent');
+
+  // Garde-fou : sans id valide dans l'URL, on ne tente aucun appel API (c'était la cause
+  // des erreurs "Cast to ObjectId failed for value null" — on évite ça complètement ici).
+  if (!txId || txId === 'null' || txId === 'undefined') {
+    pageContent.innerHTML = `
+      <div class="error-box">
+        <h1 style="font-size:20px;">Aucune transaction sélectionnée</h1>
+        <p>Cette page s'ouvre depuis un achat en cours sur la page P2P — elle ne peut pas être visitée directement.</p>
+        <a href="p2p.html" class="btn btn-primary">Retour au P2P</a>
+      </div>`;
+  } else {
+    initPage();
+  }
+
+  async function initPage() {
+    pageContent.innerHTML = renderShell();
+    connectSocket();
+
+    try {
+      const user = await api.me();
+      currentUserId = user.id;
+      await loadTransaction();
+    } catch (err) {
+      pageContent.innerHTML = `<div class="error-box"><h1 style="font-size:20px;">Erreur</h1><p>${err.message}</p><a href="p2p.html" class="btn btn-primary">Retour au P2P</a></div>`;
+    }
+  }
+
+  function connectSocket() {
+    socket = io(window.API_BASE_URL?.replace('/api', '') || 'http://localhost:4000', {
+      auth: { token: localStorage.getItem('ac_token') }
+    });
+    socket.emit('chat:join', txId);
+    socket.on('chat:message', appendMessage);
+    socket.on('p2p:released', () => loadTransaction());
+    socket.on('p2p:payment_declared', () => loadTransaction());
+  }
+
+  function renderShell() {
+    return `
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+        <h1 style="font-size:20px;">Transaction</h1>
+        <span class="status pending" id="statusPill">—</span>
+      </div>
+      <div class="layout">
+        <div>
+          <div class="card"><div class="steps" id="steps"></div><div id="actionArea"></div></div>
+          <div class="card chat-box">
+            <h2 style="font-size:14px; margin-bottom:14px;">Discussion avec l'autre partie</h2>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input">
+              <input type="text" id="chatInput" placeholder="Écrire un message…">
+              <button class="btn btn-primary" onclick="sendMessage()">Envoyer</button>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="align-self:start;">
+          <h2 style="font-size:14px; margin-bottom:14px;">Résumé</h2>
+          <div id="summary"></div>
+        </div>
+      </div>`;
+  }
 
   function appendMessage(m) {
     const wrap = document.getElementById('chatMessages');
+    if (!wrap) return;
     const mine = m.sender === currentUserId;
     wrap.insertAdjacentHTML('beforeend', `<div class="msg ${mine ? 'mine' : ''}">${m.content}</div>`);
     wrap.scrollTop = wrap.scrollHeight;
@@ -97,8 +149,8 @@
     const idx = order.indexOf(tx.status);
     const labels = [
       ['Escrow ouvert', 'Les USDT du vendeur sont bloqués'],
-      ['Paiement déclaré', "L'acheteur a envoyé le Mobile Money"],
-      ['Fonds libérés', 'USDT transférés à l\'acheteur']
+      ['Paiement déclaré', "L'acheteur a envoyé le Mobile Money et joint une preuve"],
+      ['Fonds libérés', "USDT transférés à l'acheteur"]
     ];
     document.getElementById('steps').innerHTML = labels.map(([l, s], i) => `
       <div class="step ${i <= idx ? 'done' : ''}">
@@ -109,57 +161,107 @@
 
   function renderActions(tx, isSeller, isBuyer) {
     const area = document.getElementById('actionArea');
+
     if (tx.status === 'en_attente_paiement' && isBuyer) {
-      area.innerHTML = `<button class="btn btn-primary btn-block" onclick="declarePaid()">J'ai payé</button>`;
+      area.innerHTML = `
+        <div class="pay-instructions">
+          <h3>Instructions de paiement</h3>
+          <div class="pay-row"><span class="k">Envoyer à</span><span class="v">${tx.paymentInstructions.accountName}</span></div>
+          <div class="pay-row"><span class="k">Numéro</span><span class="v">${tx.paymentInstructions.accountNumber}</span></div>
+          <div class="pay-row"><span class="k">Méthode</span><span class="v">${tx.paymentMethod}</span></div>
+          <div class="pay-row"><span class="k">Montant exact</span><span class="v">${tx.amountFiat.toLocaleString('fr-FR')} XAF</span></div>
+        </div>
+        <p style="font-size:13px; color:var(--slate); margin-bottom:4px;">Une fois le paiement Mobile Money envoyé, joins une capture d'écran de la confirmation, puis clique sur "J'ai payé".</p>
+        <div class="proof-upload" id="proofUpload" onclick="document.getElementById('proofInput').click()">
+          <span id="proofLabel">Cliquer pour ajouter une capture d'écran</span>
+          <input type="file" id="proofInput" accept="image/*" style="display:none;" onchange="handleProofSelected(event)">
+          <div id="proofPreviewWrap"></div>
+        </div>
+        <button class="btn btn-primary btn-block" id="declarePaidBtn" onclick="declarePaid()" disabled>J'ai payé</button>
+      `;
     } else if (tx.status === 'paiement_declare' && isSeller) {
       area.innerHTML = `
-        <button class="btn btn-secondary btn-block" onclick="confirmRelease()">Confirmer la réception et libérer</button>
-        <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="openDispute()">Ouvrir un litige</button>`;
+        <p style="font-size:13px; color:var(--slate); margin-bottom:12px;">L'acheteur affirme avoir payé et a joint la preuve ci-dessous. Vérifie sur ton compte Mobile Money que le montant exact (${tx.amountFiat.toLocaleString('fr-FR')} XAF) est bien arrivé avant de confirmer.</p>
+        <img src="${tx.proofScreenshotUrl}" class="proof-preview" alt="Preuve de paiement" style="margin-bottom:18px;">
+        <button class="btn btn-secondary btn-block" onclick="confirmRelease()">Confirmer la réception et libérer les USDT</button>
+        <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="openDispute()">Je n'ai rien reçu — ouvrir un litige</button>
+      `;
     } else if (['en_attente_paiement', 'paiement_declare'].includes(tx.status)) {
-      area.innerHTML = `<button class="btn btn-ghost btn-block" onclick="openDispute()">Ouvrir un litige</button>`;
+      area.innerHTML = `<p style="font-size:13px; color:var(--slate);">En attente de l'autre partie.</p><button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="openDispute()">Ouvrir un litige</button>`;
     } else if (tx.status === 'liberee') {
-      area.innerHTML = `<div class="status success">USDT libérés avec succès</div>`;
+      area.innerHTML = `<div class="status success">USDT libérés avec succès — visibles dans ton Portefeuille.</div>`;
     } else if (tx.status === 'litige') {
-      area.innerHTML = `<div class="status danger">Litige en cours — un administrateur va trancher</div>`;
+      area.innerHTML = `<div class="status danger">Litige en cours — un administrateur va trancher.</div>`;
+    } else if (tx.status === 'remboursee') {
+      area.innerHTML = `<div class="status danger">Litige résolu en faveur du vendeur — fonds remboursés.</div>`;
     }
   }
 
+  function handleProofSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      proofDataUrl = reader.result;
+      document.getElementById('proofUpload').classList.add('has-file');
+      document.getElementById('proofLabel').textContent = file.name;
+      document.getElementById('proofPreviewWrap').innerHTML = `<img src="${proofDataUrl}" class="proof-preview">`;
+      const btn = document.getElementById('declarePaidBtn');
+      if (btn) btn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function loadTransaction() {
-    const [user, wallet] = await Promise.all([api.me(), api.getWallet()]);
-    currentUserId = user.id;
+    const tx = currentTx = await api.getTransaction(txId);
+    const isSeller = String(tx.seller._id) === currentUserId;
+    const isBuyer = String(tx.buyer._id) === currentUserId;
 
-    // NOTE : un endpoint GET /p2p/transactions/:id dédié est à ajouter côté API
-    // pour récupérer la transaction complète ; ce squelette suppose qu'il existe.
-    const tx = currentTx = { status: 'en_attente_paiement', amountCrypto: 0, amountFiat: 0, pricePerUnit: 0, platformFee: 0, paymentMethod: '—', seller: null, buyer: user.id };
-
-    const statusMap = { en_attente_paiement: ['pending', 'En attente de paiement'], paiement_declare: ['pending', 'Paiement déclaré'], liberee: ['success', 'Terminée'], litige: ['danger', 'Litige'], remboursee: ['danger', 'Remboursée'] };
+    const statusMap = {
+      en_attente_paiement: ['pending', 'En attente de paiement'],
+      paiement_declare: ['pending', 'Paiement déclaré'],
+      liberee: ['success', 'Terminée'],
+      litige: ['danger', 'Litige'],
+      remboursee: ['danger', 'Remboursée']
+    };
     const [cls, label] = statusMap[tx.status] || ['pending', tx.status];
     const pill = document.getElementById('statusPill');
-    pill.className = `status ${cls}`; pill.textContent = label;
+    pill.className = `status ${cls}`;
+    pill.textContent = label;
 
     renderSteps(tx);
-    renderActions(tx, String(tx.seller) === currentUserId, String(tx.buyer) === currentUserId);
+    renderActions(tx, isSeller, isBuyer);
 
     document.getElementById('summary').innerHTML = `
+      <div class="summary-row"><span class="muted">Rôle</span><span class="v">${isSeller ? 'Vendeur' : 'Acheteur'}</span></div>
       <div class="summary-row"><span class="muted">Montant</span><span class="v">${tx.amountCrypto} USDT</span></div>
-      <div class="summary-row"><span class="muted">Total à payer</span><span class="v">${tx.amountFiat.toLocaleString('fr-FR')} XAF</span></div>
+      <div class="summary-row"><span class="muted">Total</span><span class="v">${tx.amountFiat.toLocaleString('fr-FR')} XAF</span></div>
       <div class="summary-row"><span class="muted">Prix unitaire</span><span class="v">${tx.pricePerUnit} XAF</span></div>
       <div class="summary-row"><span class="muted">Méthode</span><span class="v">${tx.paymentMethod}</span></div>`;
 
+    const messagesWrap = document.getElementById('chatMessages');
+    messagesWrap.innerHTML = '';
     const messages = await api.getMessages(txId).catch(() => []);
     messages.forEach(appendMessage);
   }
 
-  async function declarePaid() { await api.declarePaid(txId); loadTransaction(); }
-  async function confirmRelease() { await api.confirmRelease(txId); loadTransaction(); }
+  async function declarePaid() {
+    if (!proofDataUrl) { alert('Ajoute une capture d\'écran avant de continuer.'); return; }
+    try {
+      await api.declarePaid(txId, proofDataUrl);
+      await loadTransaction();
+    } catch (err) { alert(err.message); }
+  }
+  async function confirmRelease() {
+    try { await api.confirmRelease(txId); await loadTransaction(); }
+    catch (err) { alert(err.message); }
+  }
   async function openDispute() {
     const reason = prompt('Décrivez le problème :');
     if (!reason) return;
-    await api.openDispute(txId, { reason });
-    loadTransaction();
+    try { await api.openDispute(txId, { reason }); await loadTransaction(); }
+    catch (err) { alert(err.message); }
   }
-
-  loadTransaction();
 </script>
 </body>
 </html>
